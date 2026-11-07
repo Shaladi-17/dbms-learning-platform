@@ -1,0 +1,7 @@
+# ASH - DBMS Learning Platform Git Ignore
+.env
+*.log
+.DS_Store
+Thumbs.db
+node_modules/
+vendor/
