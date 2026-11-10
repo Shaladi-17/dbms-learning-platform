@@ -1,6 +1,8 @@
 # ASH - DBMS Learning Platform Git Ignore
 .env
 *.log
+.backup_remediation/
+scratch/
 .DS_Store
 Thumbs.db
 node_modules/

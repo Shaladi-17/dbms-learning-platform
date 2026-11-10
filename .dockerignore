@@ -3,8 +3,9 @@
 .gitignore
 .env
 *.log
+.backup_remediation/
+scratch/
 test_*.php
 test_*.mjs
-scratch/
 .vscode/
 .idea/
