@@ -91,6 +91,111 @@ export function renderMathInElementSafely(container) {
   }
 }
 
+/**
+ * Format raw academic lecture content into structured semantic HTML blocks
+ * Handles paragraphs, headers, bullet lists, numbered lists, bold text, and math
+ */
+export function formatAcademicText(rawText) {
+  if (!rawText || typeof rawText !== "string") return "";
+
+  // 1. Temporarily protect math blocks
+  const mathPlaceholders = [];
+  let text = rawText.replace(/(\$\$[\s\S]*?\$\$|\\\[[\s\S]*?\\\]|\$[^$\n]+\$|\\\([\s\S]*?\\\))/g, (match) => {
+    const placeholder = `__MATH_TOKEN_${mathPlaceholders.length}__`;
+    mathPlaceholders.push(match);
+    return placeholder;
+  });
+
+  // 2. Normalize line endings
+  text = text.replace(/\r\n/g, "\n").trim();
+
+  // 3. Split into logical blocks by double newlines
+  const rawBlocks = text.split(/\n{2,}/);
+  const formattedBlocks = [];
+
+  for (let block of rawBlocks) {
+    block = block.trim();
+    if (!block) continue;
+
+    // Handle Headings (### or ##)
+    if (block.startsWith("### ") || block.startsWith("## ")) {
+      const isH4 = block.startsWith("### ");
+      const prefix = isH4 ? "### " : "## ";
+      const firstLineEnd = block.indexOf("\n");
+      if (firstLineEnd !== -1) {
+        const headingLine = block.substring(prefix.length, firstLineEnd).trim();
+        formattedBlocks.push(isH4 
+          ? `<h4 class="academic-subheading">${formatInlineStyles(headingLine)}</h4>` 
+          : `<h3 class="academic-subheading-h3">${formatInlineStyles(headingLine)}</h3>`);
+        block = block.substring(firstLineEnd + 1).trim();
+        if (!block) continue;
+      } else {
+        const headingText = formatInlineStyles(block.substring(prefix.length).trim());
+        formattedBlocks.push(isH4 
+          ? `<h4 class="academic-subheading">${headingText}</h4>` 
+          : `<h3 class="academic-subheading-h3">${headingText}</h3>`);
+        continue;
+      }
+    }
+
+    const lines = block.split("\n").map(l => l.trim()).filter(Boolean);
+
+    // Check if entire block is a bullet list (* or -)
+    const isBulletList = lines.every(l => l.startsWith("* ") || l.startsWith("- "));
+    if (isBulletList) {
+      const listItems = lines.map(l => {
+        const itemContent = l.replace(/^[\*\-]\s+/, "");
+        return `<li>${formatInlineStyles(itemContent)}</li>`;
+      }).join("");
+      formattedBlocks.push(`<ul class="academic-list">${listItems}</ul>`);
+      continue;
+    }
+
+    // Check if entire block is a numbered list (1., 2., etc.)
+    const isNumberedList = lines.every(l => /^\d+\.\s+/.test(l));
+    if (isNumberedList) {
+      const listItems = lines.map(l => {
+        const itemContent = l.replace(/^\d+\.\s+/, "");
+        return `<li>${formatInlineStyles(itemContent)}</li>`;
+      }).join("");
+      formattedBlocks.push(`<ol class="academic-list">${listItems}</ol>`);
+      continue;
+    }
+
+    // Check if mixed: starts with introductory sentence then bullet points
+    if (lines.length > 1 && (lines[0].endsWith(":") || lines[0].endsWith("：")) && lines.slice(1).every(l => l.startsWith("* ") || l.startsWith("- "))) {
+      const intro = `<p class="topic-paragraph">${formatInlineStyles(lines[0])}</p>`;
+      const items = lines.slice(1).map(l => `<li>${formatInlineStyles(l.replace(/^[\*\-]\s+/, ""))}</li>`).join("");
+      formattedBlocks.push(`${intro}<ul class="academic-list">${items}</ul>`);
+      continue;
+    }
+
+    // Standard paragraph with inline styling
+    const paragraphContent = lines.map(l => formatInlineStyles(l)).join("<br>");
+    formattedBlocks.push(`<p class="topic-paragraph">${paragraphContent}</p>`);
+  }
+
+  let finalHtml = formattedBlocks.join("\n");
+
+  // Restore protected math blocks
+  mathPlaceholders.forEach((math, idx) => {
+    finalHtml = finalHtml.replace(`__MATH_TOKEN_${idx}__`, math);
+  });
+
+  return finalHtml;
+}
+
+/**
+ * Format inline bold, italic, code spans, and badges
+ */
+function formatInlineStyles(str) {
+  if (!str) return "";
+  return str
+    .replace(/\*\*(.*?)\*\*/g, '<strong class="academic-bold">$1</strong>')
+    .replace(/(?<!\*)\*(?!\*)(.*?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code class="academic-code">$1</code>');
+}
+
 export function openModal(modalId) {
   const modal = document.getElementById(modalId);
   if (modal) {

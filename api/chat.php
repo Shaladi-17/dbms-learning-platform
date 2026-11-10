@@ -1,12 +1,13 @@
 <?php
 /**
  * ASH - DBMS Platform AI Assistant Chat API Endpoint
- * Handles student requests, performs RAG retrieval, and generates AI answers
+ * Handles student requests, performs Zero-Token Pre-Validation, RAG retrieval, and generates AI answers
  */
 
 declare(strict_types=1);
 
 require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/validator.php';
 require_once __DIR__ . '/rag.php';
 require_once __DIR__ . '/gemini.php';
 
@@ -40,24 +41,22 @@ if (!is_array($data)) {
 
 $message = trim((string)($data['message'] ?? ''));
 
-// Validate message length
-if ($message === '') {
+// ========================================================
+// ZERO-TOKEN PRE-VALIDATION (Consumes 0 Gemini Tokens)
+// ========================================================
+$validation = QueryValidator::validate($message);
+if (!$validation['valid']) {
     jsonResponse([
         'success' => false,
-        'reply' => 'يرجى كتابة سؤال أو استفسار.',
-        'error_code' => 'MESSAGE_EMPTY'
-    ], 400);
+        'reply' => $validation['reply'],
+        'error_code' => $validation['error_code'],
+        'sources' => []
+    ], 200);
 }
 
-if (mb_strlen($message) > 2000) {
-    jsonResponse([
-        'success' => false,
-        'reply' => 'الرسالة طويلة جداً. يرجى اختصار السؤال إلى أقل من 2000 حرف.',
-        'error_code' => 'MESSAGE_TOO_LONG'
-    ], 400);
-}
-
-// 1. Retrieve RAG chunks
+// ========================================================
+// 1. Retrieve RAG chunks from official summary
+// ========================================================
 $ragChunks = RAGEngine::retrieve($message, 3);
 
 $sources = array_map(function ($chunk) {
@@ -68,7 +67,9 @@ $sources = array_map(function ($chunk) {
     ];
 }, $ragChunks);
 
-// 2. Generate Gemini response
+// ========================================================
+// 2. Generate Gemini response with theoretical constraints
+// ========================================================
 $aiResult = GeminiClient::generateResponse($message, $ragChunks);
 
 if (!$aiResult['success']) {

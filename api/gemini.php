@@ -2,6 +2,7 @@
 /**
  * ASH - DBMS Platform Gemini API Client
  * Secure integration with Google Gemini Generative Language API
+ * Strictly enforces academic theory focus and Zero-Code Policy
  */
 
 declare(strict_types=1);
@@ -20,7 +21,7 @@ class GeminiClient
         if (!AppConfig::isApiKeyConfigured()) {
             return [
                 'success' => false,
-                'reply' => "⚠️ **تنبيه الإعداد:** لم يتم ضبط مفتاح `GEMINI_API_KEY` بعد.\n\nلتفعيل مساعد الذكاء الاصطناعي:\n- **محلياً (XAMPP):** قم بإضافة مفتاحك داخل ملف `.env` بصيغة `GEMINI_API_KEY=your_key`.\n- **على Render:** أضف المتغير `GEMINI_API_KEY` في إعدادات **Environment Variables** الخاصة بالخدمة.\n\nيمكنك الحصول على مفتاح مجاني من [Google AI Studio](https://aistudio.google.com/).",
+                'reply' => "⚠️ **تنبيه الإعداد الأكاديمي:** لم يتم ضبط مفتاح `GEMINI_API_KEY` بعد في بيئة الخادم.\n\nلتفعيل مساعد الذكاء الاصطناعي:\n- **محلياً (XAMPP):** تأكد من وجود ملف `.env` في جذر المشروع يحتوي على `GEMINI_API_KEY=your_key`.\n- **على استضافة Render:** أضف المتغير `GEMINI_API_KEY` في لوحة **Environment Variables**.\n\nالمساعد جاهز للعمل بمجرد تزويد المفتاح المعتمد.",
                 'error_code' => 'API_KEY_MISSING'
             ];
         }
@@ -30,8 +31,9 @@ class GeminiClient
         $candidateModels = array_values(array_unique([
             $primaryModel,
             'gemini-3-flash-preview',
-            'gemini-3.1-flash-lite',
-            'gemini-flash-latest'
+            'gemini-2.0-flash',
+            'gemini-1.5-flash',
+            'gemini-1.5-flash-latest'
         ]));
 
         // Build System Instruction & Context
@@ -53,10 +55,10 @@ class GeminiClient
                 ]
             ],
             'generationConfig' => [
-                'temperature' => 0.4,
+                'temperature' => 0.35,
                 'topP' => 0.85,
                 'topK' => 40,
-                'maxOutputTokens' => 2048
+                'maxOutputTokens' => 1024
             ]
         ];
 
@@ -92,7 +94,7 @@ class GeminiClient
             curl_close($ch);
 
             if ($response === false) {
-                $lastError = "Gemini Network Error: " . $curlError;
+                $lastError = "Network connection failure: " . $curlError;
                 $lastHttpCode = 0;
                 continue;
             }
@@ -108,54 +110,57 @@ class GeminiClient
                 ];
             }
 
-            // If 503 or 404 or 429, try next model
             $lastHttpCode = $httpCode;
-            $lastError = $result['error']['message'] ?? 'Unknown error';
-            error_log("Gemini model {$model} returned HTTP {$httpCode}: {$lastError}. Trying next fallback...");
+            $lastError = $result['error']['message'] ?? 'Unknown Gemini API error';
+            error_log("Gemini model {$model} returned HTTP {$httpCode}: {$lastError}. Attempting fallback...");
         }
 
         // Mask any key if present in error message
         $safeError = str_replace($apiKey, '***KEY***', (string)$lastError);
-        error_log("All Gemini models failed. Last HTTP: {$lastHttpCode}, Error: {$safeError}");
+        error_log("All candidate Gemini models failed. Last HTTP: {$lastHttpCode}, Safe Error: {$safeError}");
 
         if ($lastHttpCode === 429) {
             return [
                 'success' => false,
-                'reply' => "تم تجاوز حد الطلبات المسموح به مؤقتاً في خدمة الذكاء الاصطناعي. يرجى الانتظار دقيقة والمحاولة مجدداً.",
+                'reply' => "تم تجاوز حد الطلبات اللحظي في خدمة الذكاء الاصطناعي (Rate Limit). يرجى الانتظار 30 ثانية والمحاولة ثانية.",
                 'error_code' => 'RATE_LIMIT'
             ];
         }
 
         return [
             'success' => false,
-            'reply' => "تعذر الحصول على استجابة من المساعد الذكي حالياً (خطأ في الخادم أو الشبكة). يرجى المحاولة مرة أخرى بعد قليل.",
+            'reply' => "تعذر الاتصال بخدمة الذكاء الاصطناعي حالياً. يمكنك الاعتماد على شروحات الموسوعة التفاعلية وبنك الأسئلة المعتمد داخل المنصة.",
             'error_code' => 'API_ERROR',
             'http_status' => $lastHttpCode
         ];
     }
 
     /**
-     * Build strict academic system instruction
+     * Build strict academic system instruction with Zero-Code enforcement
      */
     private static function buildSystemInstruction(): string
     {
         return <<<INSTRUCTION
-أنت "DBMS AI Assistant" (مساعد الداتا بيز الذكي)، مساعد تعليمي متقدم ومتخصص في مقرر نظم إدارة قواعد البيانات (Database Management Systems - DBMS).
+أنت "مساعد الداتا بيز الذكي" (DBMS Academic AI Assistant)، المساعد التعليمي المتخصص في مقرر نظم إدارة قواعد البيانات (Database Management Systems) وفق المرجع الأكاديمي المعتمد (Lectures 1–9 Midterm Summary).
 
-قواعد السلوك الأكاديمي الصارمة:
-1. مرجعك الأكاديمي الأساسي والحاكم هو محتوى "سياق المرجع الأكاديمي المسترجع" المرفق في كل طلب.
-2. أعطِ الأولوية القصوى لمعلومات المرجع واعتمد على تعاريفه ومعادلاته وأمثلته الرسمية.
-3. اشرح المفاهيم بأسلوب تعليمي متدرج، منظم، وشيق، مع استخدام العناوين والنقاط وجداول المقارنة عند الحاجة.
-4. استخدم اللغة العربية الفصحى السليمة في الشرح، مع الحفاظ الدائم على المصطلحات التقنية باللغة الإنجليزية كما هي (مثل: Primary Key, Foreign Key, Functional Dependency, Normalization, 1NF, 2NF, 3NF, BCNF, Attribute Closure, Relational Algebra, Selection, Projection, Natural Join, Degree, Cardinality).
-5. عند شرح أمثلة SQL أو الجبر العلائقي، اكتب الأكواد والتعبيرات واضحة داخل كتل تعليمية منسقة.
-6. لا تخترع معلومات أو تنسب إلى المرجع ما ليس فيه؛ إذا كانت المعلومة غير موجودة في المرجع، صرّح بذلك بوضوح ("لم يرد هذا الموضوع في ملخص المقرر المعتمد...") ثم قدم الإجابة الأكاديمية العامة مميزاً إياها بأنها "معلومة إضافية".
-7. إذا كان سؤال الطالب مبهماً أو ناقصاً، اطلب منه التوضيح بأسلوب لطيف ومباشر.
-8. اذكر دائماً في نهاية الإجابة اسم المحاضرة أو القسم الذي تم الاعتماد عليه (مثلاً: 📌 المرجع: المحاضرة 7 - نظرية التطبيع).
+القواعد الأكاديمية والسيادية الملزمة (Strict Academic Constraints):
+1. سياسة منع الأكواد الصارمة (Zero-Code Policy):
+   - يُمنع منعاً باتاً كتابة أو تصحيح أو توليد أي كود برمجي تنفيذي (مثل استعلامات SQL، أو شفرات Python أو Java أو PHP أو C++ أو HTML).
+   - إذا سُئلت عن استعلام SQL، اشرح المفهوم الرياضي المعادل له في الجبر العلائقي (Relational Algebra Expression) أو المفهوم النظري بدلاً من كتابة كود SQL.
+2. المرجعية الأكاديمية الحاكمة:
+   - مرجعك الأساسي هو سياق المرجع الأكاديمي المرفق (المحاضرات 1 إلى 9).
+   - التزم بالتعاريف والمصطلحات والرموز الرسمية الواردة في المرجع (مثل: ANSI-SPARC 3-Level Architecture، مفاهيم الكيانات القوية والضعيفة، قواعد التحويل السبع 7-Step Mapping، شروط التطبيع 1NF, 2NF, 3NF, BCNF، خوارزمية إغلاق السمات وتحديد المفاتيح المرشحة بطريقة L/R/B/N).
+3. الأسلوب التعليمي المتقن:
+   - اشرح بأسلوب أكاديمي منظم، واضح، ومتسلسل باللغة العربية الفصحى.
+   - حافظ على المصطلحات التقنية الأساسية بالإنجليزية بين قوسين (مثل: Primary Key, Foreign Key, Functional Dependency, Attribute Closure, Partial Dependency, Transitive Dependency).
+   - رتب الإجابة في نقاط واضحة وعناوين فرعية لتسهيل الفهم والتركيز للامتحان.
+4. الأمانة العلمية:
+   - لا تختلق أي معلومة غير موثقة في المنهج، واذكر دائماً في نهاية الإجابة اسم المحاضرة أو القسم المرجعي المعتمد (مثلاً: 📌 المرجع: المحاضرة 7 - نظرية التطبيع والاعتماديات الوظيفية).
 INSTRUCTION;
     }
 
     /**
-     * Build the user prompt enriched with RAG context
+     * Build user prompt enriched with RAG context
      */
     private static function buildPromptWithRAG(string $userMessage, array $ragChunks): string
     {
@@ -163,7 +168,7 @@ INSTRUCTION;
             return $userMessage;
         }
 
-        $contextBlock = "=== سياق المرجع الأكاديمي المسترجع من ملخص المقرر (DBMS Lectures 1-9) ===\n\n";
+        $contextBlock = "=== سياق المرجع الأكاديمي المعتمد (DBMS Midterm Summary - Lectures 1-9) ===\n\n";
 
         foreach ($ragChunks as $i => $chunk) {
             $idx = $i + 1;

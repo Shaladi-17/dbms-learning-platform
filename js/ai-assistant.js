@@ -407,32 +407,57 @@ export class AIAssistant {
   formatMarkdown(text) {
     if (!text) return "";
 
-    // 1. Code blocks with language (e.g. ```sql ... ```)
-    let out = text.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (match, lang, code) => {
-      return `<div class="ai-code-block ltr"><div class="ai-code-header"><span>${lang || "code"}</span></div><pre><code>${escapeHtml(code.trim())}</code></pre></div>`;
+    // 1. Stash and protect fenced code blocks
+    const codeBlocks = [];
+    let out = text.replace(/```([a-zA-Z0-9_-]*)\r?\n([\s\S]*?)```/g, (match, lang, code) => {
+      const idx = codeBlocks.length;
+      codeBlocks.push({ lang: lang || "code", code: code.trim() });
+      return `__DBMS_CODE_BLOCK_${idx}__`;
     });
 
-    // 2. Inline code `...`
-    out = out.replace(/`([^`]+)`/g, '<code class="ai-inline-code ltr">$1</code>');
+    // 2. Stash and protect inline code
+    const inlineCodes = [];
+    out = out.replace(/`([^`\r\n]+)`/g, (match, code) => {
+      const idx = inlineCodes.length;
+      inlineCodes.push(code);
+      return `__DBMS_INLINE_CODE_${idx}__`;
+    });
 
-    // 3. Headers
+    // 3. Escape ALL remaining raw HTML to prevent XSS attacks
+    out = escapeHtml(out);
+
+    // 4. Headers
     out = out.replace(/^### (.*$)/gim, '<h5 class="ai-h3">$1</h5>');
     out = out.replace(/^## (.*$)/gim, '<h4 class="ai-h2">$1</h4>');
     out = out.replace(/^# (.*$)/gim, '<h3 class="ai-h1">$1</h3>');
 
-    // 4. Bold and italics
+    // 5. Bold and italics
     out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
     out = out.replace(/\*([^*]+)\*/g, '<em>$1</em>');
 
-    // 5. Bullet lists
+    // 6. Bullet lists
     out = out.replace(/^\s*[\*\-]\s+(.*$)/gim, '<li class="ai-li">$1</li>');
     out = out.replace(/(<li class="ai-li">.*<\/li>)/gms, '<ul class="ai-ul">$1</ul>');
 
-    // 6. Numbered lists
+    // 7. Numbered lists
     out = out.replace(/^\s*(\d+)\.\s+(.*$)/gim, '<li class="ai-oli">$2</li>');
 
-    // 7. Paragraph linebreaks
-    out = out.replace(/\n\n/g, '<br><br>');
+    // 8. Paragraph linebreaks
+    out = out.replace(/\r?\n\r?\n/g, '<br><br>');
+    out = out.replace(/\r?\n/g, '<br>');
+
+    // 9. Restore code blocks with safely escaped content
+    out = out.replace(/__DBMS_CODE_BLOCK_(\d+)__/g, (match, idx) => {
+      const item = codeBlocks[parseInt(idx, 10)];
+      if (!item) return "";
+      return `<div class="ai-code-block ltr"><div class="ai-code-header"><span>${escapeHtml(item.lang)}</span></div><pre><code>${escapeHtml(item.code)}</code></pre></div>`;
+    });
+
+    // 10. Restore inline codes with safely escaped content
+    out = out.replace(/__DBMS_INLINE_CODE_(\d+)__/g, (match, idx) => {
+      const code = inlineCodes[parseInt(idx, 10)];
+      return `<code class="ai-inline-code ltr">${escapeHtml(code || "")}</code>`;
+    });
 
     return out;
   }

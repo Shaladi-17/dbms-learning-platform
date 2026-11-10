@@ -9,7 +9,7 @@ import { searchEngine } from "./search.js";
 import { ClosureCalculator, NORMALIZATION_CASES, MAPPING_STEPS_DATA, RelationalEngine } from "./simulators.js";
 import { MockExamEngine } from "./mock-exam.js";
 import { DiagramRenderer } from "./diagrams.js";
-import { renderMathInElementSafely, showToast, copyToClipboard, openModal, closeModal, formatTime } from "./utils.js";
+import { renderMathInElementSafely, showToast, copyToClipboard, openModal, closeModal, formatTime, formatAcademicText } from "./utils.js";
 import { aiAssistant } from "./ai-assistant.js";
 
 class App {
@@ -40,12 +40,17 @@ class App {
       console.warn("AI Assistant init notice:", e);
     }
 
-    // Force Dashboard as initial view on fresh load unless a valid hash is provided
+    // Force Dashboard as initial view on fresh load unless a valid hash is provided or active exam is in progress
     let initialView = "dashboard";
-    const hash = window.location.hash.replace("#", "").trim();
-    const validViews = ["dashboard", "encyclopedia", "simulators", "pitfalls", "mock-exam", "question-bank", "cheatsheets", "traceability"];
-    if (hash && validViews.includes(hash)) {
-      initialView = hash;
+    if (this.mockExamEngine.restoreState()) {
+      initialView = "mock-exam";
+      this.startExamTimer();
+    } else {
+      const hash = window.location.hash.replace("#", "").trim();
+      const validViews = ["dashboard", "encyclopedia", "simulators", "pitfalls", "mock-exam", "question-bank", "cheatsheets", "traceability"];
+      if (hash && validViews.includes(hash)) {
+        initialView = hash;
+      }
     }
 
     this.switchView(initialView, false);
@@ -54,6 +59,15 @@ class App {
     // Listen for progress changes
     window.addEventListener("dbms_progress_updated", () => {
       this.updateStatsUI();
+    });
+
+    // Accidental reload / navigation guard during active exam
+    window.addEventListener("beforeunload", (e) => {
+      if (this.mockExamEngine && this.mockExamEngine.isRunning && !this.mockExamEngine.isSubmitted) {
+        e.preventDefault();
+        e.returnValue = "الامتحان التجريبي قيد التشغيل. هل أنت متأكد من مغادرة الصفحة؟ قد تفقد الوقت المتبقي.";
+        return e.returnValue;
+      }
     });
 
     // Handle back button / hash changes
@@ -289,6 +303,12 @@ class App {
   }
 
   switchView(viewName, pushState = true) {
+    // Prevent leaving timed exam while active
+    if (this.mockExamEngine.isRunning && !this.mockExamEngine.isSubmitted && viewName !== "mock-exam") {
+      showToast("⚠️ الامتحان النصفي قيد التشغيل! يرجى تسليم الامتحان قبل مغادرة هذه الشاشة.", "warning");
+      return;
+    }
+
     this.currentView = viewName;
 
     // Update active nav item
@@ -408,9 +428,9 @@ class App {
     const elScore = document.getElementById("stat-highest-score");
     const elExams = document.getElementById("stat-exam-count");
 
-    if (elTopics) elTopics.textContent = `${stats.completedTopicsCount} / ${stats.totalTopicsCount}`;
+    if (elTopics) elTopics.textContent = `${stats.totalTopicsCount} / ${stats.completedTopicsCount}`;
     if (elRate) elRate.textContent = `${stats.quizzesCorrectRate}%`;
-    if (elScore) elScore.textContent = `${stats.highestScore} / 50`;
+    if (elScore) elScore.textContent = `50 / ${stats.highestScore}`;
     if (elExams) elExams.textContent = `${stats.examAttemptsCount}`;
   }
 
@@ -453,35 +473,60 @@ class App {
       <!-- Section 2: Stats Grid -->
       <div class="stats-grid">
         <div class="stat-card">
+          <div class="stat-icon blue">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+              <polyline points="2 17 12 22 22 17"></polyline>
+              <polyline points="2 12 12 17 22 12"></polyline>
+            </svg>
+          </div>
           <div class="stat-info">
-            <div class="stat-value" id="stat-completed-topics">${stats.completedTopicsCount} / ${stats.totalTopicsCount}</div>
+            <div class="stat-value" id="stat-completed-topics">${stats.totalTopicsCount} / ${stats.completedTopicsCount}</div>
             <div class="stat-label">الموضوعات المكتملة</div>
           </div>
-          <div class="stat-icon blue">📚</div>
         </div>
 
         <div class="stat-card">
+          <div class="stat-icon green">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="20" x2="18" y2="10"></line>
+              <line x1="12" y1="20" x2="12" y2="4"></line>
+              <line x1="6" y1="20" x2="6" y2="14"></line>
+            </svg>
+          </div>
           <div class="stat-info">
             <div class="stat-value" id="stat-success-rate">${stats.quizzesCorrectRate}%</div>
             <div class="stat-label">نسبة الإجابات الصحيحة</div>
           </div>
-          <div class="stat-icon green">📈</div>
         </div>
 
         <div class="stat-card">
+          <div class="stat-icon amber">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path>
+              <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path>
+              <path d="M4 22h16"></path>
+              <path d="M10 14.66V17c0 .55-.45 1-1 1H7v4h10v-4h-2c-.55 0-1-.45-1-1v-2.34"></path>
+              <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path>
+            </svg>
+          </div>
           <div class="stat-info">
-            <div class="stat-value" id="stat-highest-score">${stats.highestScore} / 50</div>
+            <div class="stat-value" id="stat-highest-score">50 / ${stats.highestScore}</div>
             <div class="stat-label">أعلى نتيجة في الامتحان التجريبي</div>
           </div>
-          <div class="stat-icon amber">🏆</div>
         </div>
 
         <div class="stat-card">
+          <div class="stat-icon rose">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 14 14"></polyline>
+            </svg>
+          </div>
           <div class="stat-info">
             <div class="stat-value" id="stat-exam-count">${stats.examAttemptsCount}</div>
             <div class="stat-label">عدد محاولات الامتحانات</div>
           </div>
-          <div class="stat-icon rose">⏱️</div>
         </div>
       </div>
 
@@ -737,8 +782,8 @@ class App {
             </div>
 
             <!-- Content Area -->
-            <div class="topic-content" style="font-size: 0.95rem; color: var(--text-primary); line-height: 1.8;">
-              ${topic.content ? topic.content.replace(/\n\n/g, "<br><br>") : ""}
+            <div class="topic-content academic-prose">
+              ${topic.content ? formatAcademicText(topic.content) : ""}
             </div>
 
             <!-- Embedded Interactive Diagram if any -->
@@ -1612,12 +1657,15 @@ SSN, PNo -> Hours</textarea>
 
     this.mockExamEngine.start(duration);
     this.renderMockExam();
+    this.startExamTimer();
+  }
 
-    // Start timer interval
+  startExamTimer() {
     if (this.mockExamEngine.timerInterval) clearInterval(this.mockExamEngine.timerInterval);
 
     this.mockExamEngine.timerInterval = setInterval(() => {
       this.mockExamEngine.remainingSeconds--;
+      this.mockExamEngine.saveState();
       this.updateTimerDisplay();
 
       if (this.mockExamEngine.remainingSeconds <= 0) {
@@ -1679,7 +1727,9 @@ SSN, PNo -> Hours</textarea>
 
             <!-- Questions -->
             <div style="display: flex; flex-direction: column; gap: 1.5rem;">
-              ${sec.questions.map((q, qIdx) => `
+              ${sec.questions.map((q, qIdx) => {
+                const currentAns = this.mockExamEngine.getAnswer(q.id);
+                return `
                 <div style="background-color: var(--bg-subtle); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
                   <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
                     <div style="font-weight: 700; font-size: 0.95rem; color: var(--text-primary);">
@@ -1692,23 +1742,23 @@ SSN, PNo -> Hours</textarea>
                     <!-- T/F Options -->
                     <div style="display: flex; gap: 1rem; margin-bottom: 0.75rem;">
                       <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
-                        <input type="radio" name="tf_${q.id}" value="true" onchange="window.dbmsApp.handleTFChange('${q.id}', 'true')" />
+                        <input type="radio" name="tf_${q.id}" value="true" ${currentAns && currentAns.choice === "true" ? "checked" : ""} onchange="window.dbmsApp.handleTFChange('${q.id}', 'true')" />
                         <strong>( ✔ ) صحيح</strong>
                       </label>
                       <label style="display: flex; align-items: center; gap: 0.4rem; cursor: pointer;">
-                        <input type="radio" name="tf_${q.id}" value="false" onchange="window.dbmsApp.handleTFChange('${q.id}', 'false')" />
+                        <input type="radio" name="tf_${q.id}" value="false" ${currentAns && currentAns.choice === "false" ? "checked" : ""} onchange="window.dbmsApp.handleTFChange('${q.id}', 'false')" />
                         <strong>( ❌ ) خطأ</strong>
                       </label>
                     </div>
 
                     <!-- Correction picker if selected False -->
-                    <div id="correction-box-${q.id}" style="display: none; margin-top: 0.5rem; background-color: var(--bg-surface); padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
+                    <div id="correction-box-${q.id}" style="display: ${currentAns && currentAns.choice === "false" ? "block" : "none"}; margin-top: 0.5rem; background-color: var(--bg-surface); padding: 0.75rem; border-radius: var(--radius-sm); border: 1px solid var(--border-subtle);">
                       <label style="font-size: 0.85rem; font-weight: 600; color: var(--danger); display: block; margin-bottom: 0.35rem;">
                         اختر التصحيح الأكاديمي المعتمد للعبارة الخاطئة:
                       </label>
                       ${q.correctionOptions ? q.correctionOptions.map((opt, cIdx) => `
                         <label style="display: flex; align-items: flex-start; gap: 0.4rem; font-size: 0.85rem; margin-bottom: 0.35rem; cursor: pointer;">
-                          <input type="radio" name="corr_${q.id}" value="${cIdx}" onchange="window.dbmsApp.handleCorrectionChange('${q.id}', ${cIdx})" />
+                          <input type="radio" name="corr_${q.id}" value="${cIdx}" ${currentAns && currentAns.correctionIndex === cIdx ? "checked" : ""} onchange="window.dbmsApp.handleCorrectionChange('${q.id}', ${cIdx})" />
                           <span>${opt}</span>
                         </label>
                       `).join("") : ""}
@@ -1718,14 +1768,14 @@ SSN, PNo -> Hours</textarea>
                     <div style="display: flex; flex-direction: column; gap: 0.5rem;">
                       ${q.options.map((opt, optIdx) => `
                         <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; padding: 0.5rem; background-color: var(--bg-surface); border-radius: var(--radius-sm); border: 1px solid var(--border-color); cursor: pointer;">
-                          <input type="radio" name="mcq_${q.id}" value="${optIdx}" onchange="window.dbmsApp.handleMCQChange('${q.id}', ${optIdx})" />
+                          <input type="radio" name="mcq_${q.id}" value="${optIdx}" ${currentAns !== undefined && Number(currentAns) === optIdx ? "checked" : ""} onchange="window.dbmsApp.handleMCQChange('${q.id}', ${optIdx})" />
                           <span>${opt}</span>
                         </label>
                       `).join("")}
                     </div>
                   `}
                 </div>
-              `).join("")}
+              `}).join("")}
             </div>
           </div>
         `).join("")}
@@ -1919,15 +1969,15 @@ SSN, PNo -> Hours</textarea>
                 </button>
               </div>
 
-              <div style="font-size: 0.95rem; line-height: 1.8; color: var(--text-primary); margin-bottom: 1rem;">
-                ${q.text.replace(/\n\n/g, "<br><br>")}
+              <div class="question-text academic-prose" style="margin-bottom: 1rem;">
+                ${formatAcademicText(q.text)}
               </div>
 
               <!-- Model Answer Container (Hidden by default) -->
               <div id="answer-box-${q.id}" style="display: none; background-color: var(--bg-subtle); border-right: 4px solid var(--success); padding: 1.25rem; border-radius: var(--radius-md); margin-top: 1rem;">
                 <h4 style="color: var(--success); font-weight: 800; margin-bottom: 0.75rem;">الإجابة النموذجية المعتمدة (الفصل الحادي عشر):</h4>
-                <div style="font-size: 0.92rem; line-height: 1.8; color: var(--text-primary);">
-                  ${q.modelAnswer ? q.modelAnswer.replace(/\n\n/g, "<br><br>") : ""}
+                <div class="model-answer-content academic-prose">
+                  ${q.modelAnswer ? formatAcademicText(q.modelAnswer) : ""}
                 </div>
               </div>
             </div>

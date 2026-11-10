@@ -196,6 +196,53 @@ class RAGEngine
     }
 
     /**
+     * Get the highest relevance score for a query across all chunks
+     */
+    public static function getTopScore(string $query): int
+    {
+        $chunks = self::getChunks();
+        if (empty($chunks)) {
+            return 0;
+        }
+
+        $normQuery = self::normalizeText($query);
+        $queryWords = self::extractKeywords($normQuery);
+        if (empty($queryWords)) {
+            return 0;
+        }
+
+        $maxScore = 0;
+        foreach ($chunks as $chunk) {
+            $chunkTitle = self::normalizeText($chunk['chapter'] . ' ' . $chunk['section'] . ' ' . $chunk['lecture']);
+            $chunkText = self::normalizeText($chunk['content']);
+            $score = 0;
+
+            if (mb_stripos($chunkTitle, $normQuery) !== false) {
+                $score += 30;
+            }
+            if (mb_stripos($chunkText, $normQuery) !== false) {
+                $score += 15;
+            }
+
+            foreach ($queryWords as $word) {
+                if (mb_stripos($chunkTitle, $word) !== false) {
+                    $score += 8;
+                }
+                $count = mb_substr_count($chunkText, $word);
+                if ($count > 0) {
+                    $score += min($count, 6) * 2;
+                }
+            }
+
+            if ($score > $maxScore) {
+                $maxScore = $score;
+            }
+        }
+
+        return $maxScore;
+    }
+
+    /**
      * Text normalization helper for Arabic and English
      */
     private static function normalizeText(string $str): string

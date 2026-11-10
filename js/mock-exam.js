@@ -427,11 +427,52 @@ export class MockExamEngine {
     this.remainingSeconds = durationMinutes * 60;
     this.isRunning = true;
     document.body.classList.add("exam-lock-mode");
+    this.saveState();
+  }
+
+  saveState() {
+    if (!this.isRunning || this.isSubmitted) {
+      try { localStorage.removeItem("dbms_active_exam"); } catch (e) {}
+      return;
+    }
+    const state = {
+      isRunning: this.isRunning,
+      userAnswers: this.userAnswers,
+      endTime: Date.now() + (this.remainingSeconds * 1000),
+      durationMinutes: this.exam.durationMinutes,
+      savedAt: Date.now()
+    };
+    try { localStorage.setItem("dbms_active_exam", JSON.stringify(state)); } catch (e) {}
+  }
+
+  restoreState() {
+    try {
+      const saved = localStorage.getItem("dbms_active_exam");
+      if (!saved) return false;
+      const state = JSON.parse(saved);
+      if (!state || !state.isRunning || !state.endTime) return false;
+
+      const remainingMs = state.endTime - Date.now();
+      if (remainingMs <= 0) {
+        localStorage.removeItem("dbms_active_exam");
+        return false;
+      }
+
+      this.userAnswers = state.userAnswers || {};
+      this.remainingSeconds = Math.max(1, Math.round(remainingMs / 1000));
+      this.isRunning = true;
+      this.isSubmitted = false;
+      document.body.classList.add("exam-lock-mode");
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 
   setAnswer(questionId, answer) {
     if (this.isSubmitted) return;
     this.userAnswers[questionId] = answer;
+    this.saveState();
   }
 
   getAnswer(questionId) {
@@ -445,6 +486,7 @@ export class MockExamEngine {
     if (this.timerInterval) {
       clearInterval(this.timerInterval);
     }
+    try { localStorage.removeItem("dbms_active_exam"); } catch (e) {}
     document.body.classList.remove("exam-lock-mode");
 
     return this.gradeExam();

@@ -425,12 +425,13 @@ body {
 
 .search-box {
   position: relative;
-  width: 260px;
+  width: 270px;
 }
 
 .search-input {
   width: 100%;
-  padding: 0.55rem 2.2rem 0.55rem 0.85rem;
+  height: 38px;
+  padding: 0 2.4rem 0 1rem;
   background-color: var(--bg-subtle);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-full);
@@ -447,6 +448,7 @@ body {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
+.search-box .search-svg,
 .search-icon {
   position: absolute;
   right: 0.85rem;
@@ -642,30 +644,30 @@ body {
 ======================================================== */
 
 .academic-banner {
-  background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%);
+  background: linear-gradient(135deg, #0e2978 0%, #081742 100%);
   color: #ffffff;
   border-radius: var(--radius-lg);
   padding: 2.25rem 2rem 2rem 2rem;
   margin-bottom: 1.75rem;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.4);
+  box-shadow: 0 10px 25px -5px rgba(8, 23, 66, 0.4);
 }
 
 .academic-banner::before {
   content: "";
   position: absolute;
-  top: -60px;
-  left: -60px;
-  width: 260px;
-  height: 260px;
-  background: radial-gradient(circle, rgba(56, 189, 248, 0.28) 0%, transparent 70%);
+  top: -70px;
+  left: -70px;
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.32) 0%, transparent 70%);
   border-radius: 50%;
   pointer-events: none;
 }
 
 .banner-title {
-  font-size: 2rem;
+  font-size: 2.15rem;
   font-weight: 800;
   color: #ffffff;
   margin-bottom: 0.35rem;
@@ -687,29 +689,30 @@ body {
 }
 
 .meta-chip {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  padding: 0.35rem 0.85rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  padding: 0.35rem 0.9rem;
   border-radius: 9999px;
-  font-size: 0.82rem;
+  font-size: 0.83rem;
   color: #ffffff;
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  backdrop-filter: blur(4px);
+  gap: 0.45rem;
+  backdrop-filter: blur(6px);
   white-space: nowrap;
 }
 
 .academic-notice {
   background-color: #fffbeb;
+  border: 1px solid #fde68a;
   border-right: 4px solid #f59e0b;
-  color: #451a03;
+  color: #78350f;
   padding: 0.85rem 1.25rem;
   border-radius: var(--radius-md);
   font-size: 0.88rem;
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.75rem;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
@@ -725,6 +728,7 @@ body {
 
 [data-theme="dark"] .academic-notice {
   background-color: #451a03;
+  border-color: #92400e;
   border-right: 4px solid #fbbf24;
   color: #fef3c7;
 }
@@ -741,10 +745,11 @@ body {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  padding: 1.25rem 1.5rem;
+  padding: 1.25rem 1.4rem;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 1rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -776,21 +781,92 @@ body {
 }
 
 .stat-icon {
-  width: 48px;
-  height: 48px;
-  border-radius: 12px;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.45rem;
+  font-size: 1.35rem;
   flex-shrink: 0;
 }
 
-.stat-icon.blue { background-color: var(--primary-light); color: var(--primary); }
-.stat-icon.green { background-color: var(--success-light); color: var(--success); }
-.stat-icon.amber { background-color: var(--warning-light); color: var(--warning); }
-.stat-icon.rose { background-color: #fff1f2; color: #f43f5e; }
-[data-theme="dark"] .stat-icon.rose { background-color: #4c0519; color: #fda4af; }
+.stat-icon.blue { background-color: #eff6ff; color: #2563eb; }
+.stat-icon.green { background-color: #f0fdf4; color: #059669; }
+.stat-icon.amber { background-color: #fffbeb; color: #d97706; }
+.stat-icon.rose { background-color: #fff1f2; color: #e11d48; }
+
+[data-theme="dark"] .stat-icon.blue { background-color: rgba(37, 99, 235, 0.2); color: #60a5fa; }
+[data-theme="dark"] .stat-icon.green { background-color: rgba(16, 185, 129, 0.2); color: #34d399; }
+[data-theme="dark"] .stat-icon.amber { background-color: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+[data-theme="dark"] .stat-icon.rose { background-color: rgba(244, 63, 94, 0.2); color: #fda4af; }
+
+/* Academic Lecture Typography & Prose */
+.academic-prose {
+  font-size: 0.96rem;
+  line-height: 1.85;
+  color: var(--text-primary);
+}
+
+.academic-prose .topic-paragraph {
+  margin-bottom: 1rem;
+  line-height: 1.85;
+  text-align: justify;
+}
+
+.academic-prose .academic-subheading {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--primary);
+  margin: 1.25rem 0 0.65rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.academic-prose .academic-subheading::before {
+  content: "§";
+  color: var(--primary);
+  font-weight: 800;
+}
+
+.academic-prose .academic-subheading-h3 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 1.5rem 0 0.75rem 0;
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 0.4rem;
+}
+
+.academic-prose .academic-list {
+  padding-right: 1.6rem;
+  margin: 0.75rem 0 1.15rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.academic-prose .academic-list li {
+  line-height: 1.75;
+}
+
+.academic-prose .academic-bold {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.academic-prose .academic-code {
+  font-family: var(--font-mono);
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-color);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.88em;
+  color: var(--primary);
+  direction: ltr;
+  display: inline-block;
+}
 
 /* Dashboard Resume Learning Card */
 .dashboard-resume-card {
@@ -1324,7 +1400,12 @@ body {
 
 /* Exam Lock Mode */
 body.exam-lock-mode .sidebar {
-  transform: translateX(100%);
+  transform: translateX(100%) !important;
+  pointer-events: none !important;
+}
+
+body.exam-lock-mode .sidebar-overlay {
+  display: none !important;
 }
 
 body.exam-lock-mode .main-wrapper {
@@ -1332,10 +1413,20 @@ body.exam-lock-mode .main-wrapper {
   max-width: 100vw !important;
 }
 
-body.exam-lock-mode .header-right .search-box,
+body.exam-lock-mode .menu-toggle,
+body.exam-lock-mode .search-box,
 body.exam-lock-mode .breadcrumbs-bar,
-body.exam-lock-mode .floating-ai-btn {
+body.exam-lock-mode .floating-ai-btn,
+body.exam-lock-mode #header-ai-btn,
+body.exam-lock-mode .ai-chat-drawer {
   display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+body.exam-lock-mode .btn-home-brand {
+  pointer-events: none;
+  opacity: 0.7;
 }
 
 /* Live Countdown Timer Banner */
@@ -1427,15 +1518,19 @@ body.exam-lock-mode .floating-ai-btn {
   color: var(--text-primary);
 }
 
-/* Toast Container */
+/* Toast Container - Centered at top to never collide with Floating AI Button */
 .toast-container {
   position: fixed;
-  bottom: 1.5rem;
-  left: 1.5rem;
-  z-index: 1000;
+  top: max(1.25rem, env(safe-area-inset-top, 1.25rem));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2200;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 0.5rem;
+  pointer-events: none;
+  max-width: 90vw;
 }
 
 .toast {
@@ -1448,6 +1543,7 @@ body.exam-lock-mode .floating-ai-btn {
   gap: 0.75rem;
   font-size: 0.88rem;
   box-shadow: var(--shadow-lg);
+  pointer-events: auto;
 }
 
 .toast-success { background-color: #065f46; border-right: 4px solid #10b981; }
@@ -1954,6 +2050,10 @@ body.sidebar-open {
 }
 
 @media (max-width: 768px) {
+  input, select, textarea {
+    font-size: 16px !important; /* Prevents auto-zoom in mobile Safari */
+  }
+
   .app-header {
     padding: 0 0.85rem;
     height: 58px;
@@ -2016,8 +2116,9 @@ body.sidebar-open {
     right: 0.5rem;
     width: auto;
     max-width: none;
+    height: 80dvh;
     height: 80vh;
-    bottom: 4.75rem;
+    bottom: max(4.75rem, env(safe-area-inset-bottom, 4.75rem));
   }
 }
 
