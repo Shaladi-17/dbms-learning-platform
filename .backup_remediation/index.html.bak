@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<!-- ASH: DBMS Learning Platform - Independent Edition -->
+<html lang="ar" dir="rtl" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>منصة الداتا بيز | DBMS Learning Platform</title>
+  <meta name="description" content="منصة الداتا بيز (DBMS Learning Platform) - بيئة تعليمية تفاعلية ومستقلة لمقرر نظم إدارة قواعد البيانات مع مساعد الذكاء الاصطناعي ومختبرات المحاكاة الشاملة">
+  <meta name="robots" content="index, follow">
+  <meta name="author" content="DBMS Learning Platform">
+  <link rel="canonical" href="https://dbms-learning-platform.onrender.com/">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:title" content="منصة الداتا بيز | DBMS Learning Platform">
+  <meta property="og:description" content="بيئة تعليمية تفاعلية متقدمة لمقرر نظم إدارة قواعد البيانات تغطي المحاضرات 1–9 مع مساعد الذكاء الاصطناعي، محاكيات الجبر والتطبيع، وبنك الأسئلة الشامل">
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="ar_AR">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="منصة الداتا بيز | DBMS Learning Platform">
+  <meta name="twitter:description" content="الاستعداد الأكاديمي الشامل للامتحان النصفي في مقرر نظم إدارة قواعد البيانات (Lectures 1–9)">
+
+  <!-- SVG Favicon -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232563eb' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cellipse cx='12' cy='5' rx='9' ry='3'/%3E%3Cpath d='M21 12c0 1.66-4 3-9 3s-9-1.34-9-3'/%3E%3Cpath d='M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5'/%3E%3C/svg%3E">
+
+  <!-- JSON-LD Structured Data Schema -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Course",
+    "name": "منصة الداتا بيز - DBMS Learning Platform",
+    "description": "منصة تعليمية إلكترونية متقدمة لمقرر نظم إدارة قواعد البيانات تغطي المحاضرات 1 إلى 9 مع محاكيات تفاعلية ومساعد ذكي وبنك أسئلة امتحانية",
+    "provider": {
+      "@type": "EducationalOrganization",
+      "name": "DBMS Learning Platform"
+    },
+    "courseCode": "CS436 / CS339",
+    "inLanguage": "ar"
+  }
+  </script>
+
+  <!-- KaTeX for Mathematical Expressions & Relational Algebra -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" crossorigin="anonymous">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js" crossorigin="anonymous"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
+
+  <!-- Main Stylesheet -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- Sidebar Overlay Backdrop for Mobile -->
+  <div class="sidebar-overlay" id="sidebar-overlay" aria-hidden="true"></div>
+
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar" id="sidebar" aria-label="القائمة الجانبية">
+      <div class="sidebar-header">
+        <div class="logo-badge" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+            <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+            <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+          </svg>
+        </div>
+        <div class="logo-text">
+          <h1>منصة الداتا بيز</h1>
+          <span>DBMS Platform</span>
+        </div>
+        <button class="sidebar-close-btn" id="sidebar-close-btn" aria-label="إغلاق القائمة">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <div class="nav-section-title">الرئيسية والمتابعة</div>
+        <button class="nav-item active" data-view="dashboard">
+          <span class="nav-icon">📊</span>
+          <span>لوحة التحكم وخارطة المقرر</span>
+        </button>
+
+        <div class="nav-section-title">المحتوى الأكاديمي</div>
+        <button class="nav-item" data-view="encyclopedia">
+          <span class="nav-icon">📚</span>
+          <span>الموسوعة التفاعلية (L1–9)</span>
+        </button>
+
+        <div class="nav-section-title">المختبرات والتطبيق</div>
+        <button class="nav-item" data-view="simulators">
+          <span class="nav-icon">🧪</span>
+          <span>مختبر المحاكاة (4 أدوات)</span>
+        </button>
+
+        <div class="nav-section-title">الاستعداد للامتحان</div>
+        <button class="nav-item" data-view="pitfalls">
+          <span class="nav-icon">🎯</span>
+          <span>رادار الأفخاخ والتحليل</span>
+        </button>
+
+        <button class="nav-item" data-view="mock-exam">
+          <span class="nav-icon">⏱️</span>
+          <span>محاكي الامتحان النصفي</span>
+        </button>
+
+        <button class="nav-item" data-view="question-bank">
+          <span class="nav-icon">📝</span>
+          <span>بنك الأسئلة والحلول النموذجية</span>
+        </button>
+
+        <div class="nav-section-title">المراجعة والتوثيق</div>
+        <button class="nav-item" data-view="cheatsheets">
+          <span class="nav-icon">📑</span>
+          <span>بطاقات المراجعة السريعة</span>
+        </button>
+
+        <button class="nav-item" data-view="traceability">
+          <span class="nav-icon">🔗</span>
+          <span>مصفوفة تتبع السلايدات</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div>منصة الداتا بيز — بيئة تعليمية مستقلة</div>
+        <div style="font-size: 0.72rem; margin-top: 0.2rem;">مدعومة بمساعد Gemini الذكي وملخص المقرر</div>
+      </div>
+    </aside>
+
+    <!-- Main Wrapper -->
+    <div class="main-wrapper">
+      <!-- Header -->
+      <header class="app-header">
+        <div class="header-left">
+          <!-- Mobile Sidebar Toggle -->
+          <button class="menu-toggle" id="menu-toggle-btn" aria-label="تبديل القائمة">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+          </button>
+          
+          <!-- Return to Home Brand Button -->
+          <button class="btn-home-brand" id="btn-home-brand" title="العودة إلى الصفحة الرئيسية (لوحة التحكم)">
+            <svg class="home-brand-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <ellipse cx="12" cy="5" rx="9" ry="3"></ellipse>
+              <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path>
+              <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path>
+            </svg>
+            <span class="home-brand-text">منصة الداتا بيز</span>
+          </button>
+
+          <!-- Current Section Title Badge -->
+          <div class="header-current-badge" id="header-current-section">
+            <span class="badge-dot"></span>
+            <span class="badge-label">لوحة التحكم وخارطة المقرر</span>
+          </div>
+
+          <!-- Instant Search Box -->
+          <div class="search-box">
+            <input type="text" id="header-search-input" class="search-input" placeholder="ابحث في المفاهيم، الرموز، أو الأسئلة..." autocomplete="off">
+            <svg class="search-svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <div class="search-dropdown" id="search-dropdown"></div>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <!-- AI Assistant Header Button -->
+          <button class="btn-header-ai" id="header-ai-btn" type="button" title="فتح مساعد الداتا بيز AI" onclick="window.openDbmsAi()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path>
+            </svg>
+            <span class="header-ai-text">مساعد الداتا بيز AI</span>
+          </button>
+
+          <!-- Progress Pill -->
+          <div class="progress-pill" title="نسبة إنجاز المنهج الدراسي">
+            <span>تقدمك:</span>
+            <div class="progress-bar-mini">
+              <div class="progress-fill-mini" id="header-progress-fill" style="width: 0%;"></div>
+            </div>
+            <span id="header-progress-pct" style="color: var(--primary);">0%</span>
+          </div>
+
+          <!-- Theme Toggle Button -->
+          <button class="theme-toggle-btn" id="theme-toggle-btn" aria-label="تبديل المظهر">
+            <svg class="theme-svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Breadcrumbs Bar -->
+      <nav class="breadcrumbs-bar" id="breadcrumbs-bar" aria-label="مسار التنقل">
+        <!-- Dynamically injected -->
+      </nav>
+
+      <!-- Main Content Body -->
+      <main class="content-body" id="content-body">
+        <div id="view-dashboard" class="view-section active"></div>
+        <div id="view-encyclopedia" class="view-section"></div>
+        <div id="view-simulators" class="view-section"></div>
+        <div id="view-pitfalls" class="view-section"></div>
+        <div id="view-mock-exam" class="view-section"></div>
+        <div id="view-question-bank" class="view-section"></div>
+        <div id="view-cheatsheets" class="view-section"></div>
+        <div id="view-traceability" class="view-section"></div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Reset Progress Confirmation Modal -->
+  <div class="modal-overlay" id="reset-modal">
+    <div class="modal-dialog">
+      <h3 style="color: var(--danger); font-size: 1.25rem; font-weight: 700; margin-bottom: 0.75rem;">⚠️ تأكيد إعادة ضبط التقدم الأكاديمي</h3>
+      <p style="font-size: 0.95rem; color: var(--text-secondary); line-height: 1.6; margin-bottom: 1.25rem;">
+        هل أنت متأكد من رغبتك في حذف كافة بيانات التقدم، والموضوعات المكتملة، ونتائج الامتحانات السابقة، والملاحظات الشخصية؟ هذا الإجراء نهائي ولا يمكن التراجع عنه.
+      </p>
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+        <button class="btn btn-outline" onclick="closeModal('reset-modal')">إلغاء الأمر</button>
+        <button class="btn btn-danger" id="confirm-reset-btn">نعم، أعد ضبط تقدمي</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating AI Assistant Button -->
+  <button id="floating-ai-btn" class="floating-ai-btn" aria-label="مساعد الداتا بيز AI" onclick="window.openDbmsAi()">
+    <span class="ai-btn-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path>
+      </svg>
+    </span>
+    <span class="ai-btn-label">مساعد الداتا بيز AI</span>
+    <span class="ai-pulse-dot"></span>
+  </button>
+
+  <!-- AI Chat Drawer -->
+  <div id="ai-chat-drawer" class="ai-chat-drawer" aria-label="مساعد الداتا بيز AI">
+    <!-- Header -->
+    <div class="ai-drawer-header">
+      <div class="ai-header-info">
+        <div class="ai-avatar">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path>
+          </svg>
+        </div>
+        <div>
+          <div class="ai-title">
+            <span>مساعد الداتا بيز AI</span>
+            <span class="ai-model-badge" id="ai-model-tag">Gemini RAG</span>
+          </div>
+          <div class="ai-subtitle">المساعد الأكاديمي الذكي المعتمد على ملخص المقرر L1–9</div>
+        </div>
+      </div>
+      <div class="ai-header-actions">
+        <button class="ai-btn-action" id="ai-clear-btn" type="button" title="بدء محادثة جديدة">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path>
+            <path d="M21 3v5h-5"></path>
+            <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path>
+            <path d="M8 16H3v5"></path>
+          </svg>
+          <span>جديدة</span>
+        </button>
+        <button class="ai-btn-action ai-close-btn" id="ai-close-btn" type="button" title="إغلاق النافذة" onclick="document.getElementById('ai-chat-drawer').classList.remove('active')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Messages Body -->
+    <div class="ai-drawer-body" id="ai-messages-body">
+      <div class="ai-welcome-card" id="ai-welcome-card">
+        <div class="ai-welcome-icon">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+            <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+          </svg>
+        </div>
+        <h4>أهلاً بك في مساعد الداتا بيز AI</h4>
+        <p>
+          أنا مساعدك الأكاديمي المتخصص في مادة <strong>نظم إدارة قواعد البيانات (DBMS)</strong>. 
+          أعتمد على ملخص المحاضرات 1 إلى 9 كمرجع أساسي موثق للإجابة على استفساراتك وحل المسائل الرياضية والتطبيقية.
+        </p>
+        <div class="ai-prompt-chips">
+          <span class="ai-chip" data-prompt="ما الفرق بين Primary Key و Foreign Key؟">ما الفرق بين Primary Key و Foreign Key؟</span>
+          <span class="ai-chip" data-prompt="اشرح لي مراحل التطبيع 1NF و 2NF و 3NF بطريقة مبسطة">اشرح مراحل التطبيع 1NF و 2NF و 3NF</span>
+          <span class="ai-chip" data-prompt="كيف أستخرج Candidate Keys بطريقة تصنيف L/R/B/N؟">كيف أستخرج المفاتيح المرشحة بطريقة L/R/B/N؟</span>
+          <span class="ai-chip" data-prompt="ما هو شرط التوافقية للاتحاد (Union Compatibility) في الجبر العلائقي؟">شرط التوافقية للاتحاد في الجبر العلائقي</span>
+          <span class="ai-chip" data-prompt="ما الفرق بين الكيان القوي والكيان الضعيف في نموذج ER؟">الكيان القوي مقابل الكيان الضعيف في ER</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Thinking Indicator -->
+    <div class="ai-thinking-indicator" id="ai-thinking" style="display: none;">
+      <span class="ai-spinner"></span>
+      <span>جاري البحث في المحاضرات وصياغة الإجابة النموذجية...</span>
+    </div>
+
+    <!-- Footer / Input Form -->
+    <div class="ai-drawer-footer">
+      <form id="ai-chat-form" class="ai-chat-form">
+        <textarea 
+          id="ai-user-input" 
+          class="ai-input" 
+          rows="1" 
+          placeholder="اسأل المساعد في أي مفهوم، خوارزمية، أو مسألة في المقرر..." 
+          autocomplete="off"
+        ></textarea>
+        <button type="submit" id="ai-send-btn" class="ai-send-btn" aria-label="إرسال السؤال">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </form>
+      <div class="ai-input-hint">اضغط Enter للإرسال، أو Shift + Enter لسطر جديد. المرجع المعتمد: Lectures 1–9</div>
+    </div>
+  </div>
+
+  <!-- Synchronous AI Controller Helper -->
+  <script>
+    window.openDbmsAi = function() {
+      if (window.aiAssistant && typeof window.aiAssistant.openDrawer === "function") {
+        window.aiAssistant.openDrawer();
+      } else if (window.dbmsApp && typeof window.dbmsApp.openAiAssistant === "function") {
+        window.dbmsApp.openAiAssistant();
+      } else {
+        var drawer = document.getElementById("ai-chat-drawer");
+        if (drawer) {
+          drawer.classList.add("active");
+          var input = document.getElementById("ai-user-input");
+          if (input) setTimeout(function() { input.focus(); }, 100);
+        }
+      }
+    };
+  </script>
+
+  <!-- Main ES Module Script -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

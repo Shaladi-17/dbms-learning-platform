@@ -407,12 +407,15 @@ export class AIAssistant {
   formatMarkdown(text) {
     if (!text) return "";
 
+    const PUA_S = "\uE000";
+    const PUA_E = "\uE001";
+
     // 1. Stash and protect fenced code blocks
     const codeBlocks = [];
     let out = text.replace(/```([a-zA-Z0-9_-]*)\r?\n([\s\S]*?)```/g, (match, lang, code) => {
       const idx = codeBlocks.length;
       codeBlocks.push({ lang: lang || "code", code: code.trim() });
-      return `__DBMS_CODE_BLOCK_${idx}__`;
+      return `${PUA_S}_C_${idx}_${PUA_E}`;
     });
 
     // 2. Stash and protect inline code
@@ -420,7 +423,7 @@ export class AIAssistant {
     out = out.replace(/`([^`\r\n]+)`/g, (match, code) => {
       const idx = inlineCodes.length;
       inlineCodes.push(code);
-      return `__DBMS_INLINE_CODE_${idx}__`;
+      return `${PUA_S}_I_${idx}_${PUA_E}`;
     });
 
     // 3. Escape ALL remaining raw HTML to prevent XSS attacks
@@ -447,14 +450,14 @@ export class AIAssistant {
     out = out.replace(/\r?\n/g, '<br>');
 
     // 9. Restore code blocks with safely escaped content
-    out = out.replace(/__DBMS_CODE_BLOCK_(\d+)__/g, (match, idx) => {
+    out = out.replace(new RegExp(`${PUA_S}_C_(\\d+)_${PUA_E}`, "g"), (match, idx) => {
       const item = codeBlocks[parseInt(idx, 10)];
       if (!item) return "";
       return `<div class="ai-code-block ltr"><div class="ai-code-header"><span>${escapeHtml(item.lang)}</span></div><pre><code>${escapeHtml(item.code)}</code></pre></div>`;
     });
 
     // 10. Restore inline codes with safely escaped content
-    out = out.replace(/__DBMS_INLINE_CODE_(\d+)__/g, (match, idx) => {
+    out = out.replace(new RegExp(`${PUA_S}_I_(\\d+)_${PUA_E}`, "g"), (match, idx) => {
       const code = inlineCodes[parseInt(idx, 10)];
       return `<code class="ai-inline-code ltr">${escapeHtml(code || "")}</code>`;
     });

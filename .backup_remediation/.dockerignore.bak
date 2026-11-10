@@ -1,0 +1,10 @@
+# ASH - Docker Ignore File
+.git
+.gitignore
+.env
+*.log
+test_*.php
+test_*.mjs
+scratch/
+.vscode/
+.idea/

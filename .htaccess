@@ -2,7 +2,33 @@
 # Disallow directory browsing
 Options -Indexes
 
-# Protect dotfiles (including .env, .git, etc.)
+# 1. URL Path Protection via mod_rewrite
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Block access to .git and any contents (.git/config, .git/HEAD, etc.)
+    RewriteRule (^|/)\.git(/|$) - [F,NC,L]
+
+    # Block access to scratch folder and all internal test scripts inside it
+    RewriteRule (^|/)scratch(/|$) - [F,NC,L]
+
+    # Block access to backup folder and archives
+    RewriteRule (^|/)\.backup - [F,NC,L]
+
+    # Block access to .env files in any directory
+    RewriteRule (^|/)\.env - [F,NC,L]
+</IfModule>
+
+# 2. URL Path Protection Fallback via mod_alias
+<IfModule mod_alias.c>
+    RedirectMatch 403 (^|/)\.git
+    RedirectMatch 403 (^|/)scratch
+    RedirectMatch 403 (^|/)\.backup
+    RedirectMatch 403 (^|/)\.env
+</IfModule>
+
+# 3. File Basename Protection (Apache 2.4 & 2.2 compatible)
+# Protect all hidden dotfiles (.gitignore, .dockerignore, .env, etc.)
 <FilesMatch "^\.">
     <IfModule mod_authz_core.c>
         Require all denied
@@ -13,8 +39,8 @@ Options -Indexes
     </IfModule>
 </FilesMatch>
 
-# Protect sensitive files: .env, logs, bash scripts, database dumps, markdown summaries
-<FilesMatch "\.(env|env\.example|log|sql|sh|md|jsonl)$">
+# Protect sensitive extensions (env, logs, sql dumps, shell scripts, markdown, backups)
+<FilesMatch "(\.env|\.env\..*|\.log|\.sql|\.sh|\.md|\.jsonl|\.bak|\.example)$">
     <IfModule mod_authz_core.c>
         Require all denied
     </IfModule>
@@ -24,18 +50,7 @@ Options -Indexes
     </IfModule>
 </FilesMatch>
 
-# Specifically protect the environment file
-<Files ".env">
-    <IfModule mod_authz_core.c>
-        Require all denied
-    </IfModule>
-    <IfModule !mod_authz_core.c>
-        Order deny,allow
-        Deny from all
-    </IfModule>
-</Files>
-
-# Protect internal test files from direct HTTP requests
+# Specifically protect internal test scripts
 <FilesMatch "^(test_.*\.php|test_.*\.mjs)$">
     <IfModule mod_authz_core.c>
         Require all denied
@@ -46,7 +61,7 @@ Options -Indexes
     </IfModule>
 </FilesMatch>
 
-# Security Headers
+# 4. Security Headers
 <IfModule mod_headers.c>
     Header set X-Content-Type-Options "nosniff"
     Header set X-Frame-Options "SAMEORIGIN"
@@ -54,6 +69,5 @@ Options -Indexes
     Header set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
 
-# Character Encoding
+# 5. Default Charset
 AddDefaultCharset UTF-8
-

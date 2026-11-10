@@ -2,10 +2,11 @@
 /**
  * ASH - DBMS Platform Query & Security Validator
  * Enforces Zero-Token Pre-Validation:
- * 1. Zero-Code Rule: Strictly blocks all code generation / debugging requests without consuming Gemini API tokens.
- * 2. Scope Enforcer: Restricts queries to DBMS theoretical curriculum (Lectures 1–9).
- * 3. Input Sanitization & Max Length limits (500 chars).
- * 4. IP/Token-Bucket Server-Side Rate Limiting (survives cookie deletion).
+ * 1. Zero-Code Rule: Strictly blocks all code generation, execution, completion, or debugging requests without consuming Gemini API tokens.
+ * 2. Academic Intent Analyzer: Accurately distinguishes theoretical/conceptual questions from code generation requests.
+ * 3. Scope Enforcer: Restricts queries to DBMS theoretical curriculum (Lectures 1–9).
+ * 4. Input Sanitization & Max Length limits (500 chars).
+ * 5. Sliding Window Log Server-Side Rate Limiter: Enforces strict Fail-Closed policy and resilient IP resolution.
  */
 
 declare(strict_types=1);
@@ -20,7 +21,7 @@ class QueryValidator
     public const RATE_LIMIT_WINDOW_SECONDS = 60;
 
     /**
-     * Comprehensive Pre-Validation
+     * Comprehensive Zero-Token Pre-Validation
      * Returns ['valid' => true] or ['valid' => false, 'reply' => string, 'error_code' => string]
      */
     public static function validate(string $message): array
@@ -45,21 +46,21 @@ class QueryValidator
             ];
         }
 
-        // 3. Zero-Code Rule: Strictly reject requests asking for executable code or SQL generation
+        // 3. Prompt Injection & Security Sanitization (Highest Severity Policy Check)
+        if (self::isPromptInjection($trimmed)) {
+            return [
+                'valid' => false,
+                'reply' => '⚠️ تم رصد نمط إدخال غير آمن أو محاولة تجاوز لسياسات المنصة. يرجى صياغة سؤالك في سياق مقرر نظم قواعد البيانات فقط.',
+                'error_code' => 'SECURITY_VIOLATION'
+            ];
+        }
+
+        // 4. Zero-Code Rule: Strictly reject requests asking for executable code, SQL queries, or debugging
         if (self::isCodeRequest($trimmed)) {
             return [
                 'valid' => false,
                 'reply' => "⚠️ **سياسة المنصة الصارمة (Zero-Code Policy):**\n\nمساعد الذكاء الاصطناعي مخصص حصرياً للشرح الأكاديمي النظري، والمفاهيم الرياضية (الجبر العلائقي، والاعتماديات الوظيفية، ونظرية التطبيع)، وممنوع برمجياً من كتابة أو تصحيح أو توليد أي كود برمجي تنفيذي (مثل استعلامات SQL، أو بايثون، أو جافا، أو PHP، أو C++).\n\n💡 **نطاق المنصة:** الاستعداد للامتحان النصفي النظري (المحاضرات 1–9). أوامر SQL التطبيقية مقررة في المحاضرات 10–13 (الامتحان العملي والنهائي).\n\nيمكنك سؤالي عن: المفاهيم، المقارنات، شروط التطبيع، خوارزمية إغلاق السمات، أو رموز نموذج ER.",
                 'error_code' => 'ZERO_CODE_VIOLATION'
-            ];
-        }
-
-        // 4. Prompt Injection & Security Sanitization
-        if (self::isPromptInjection($trimmed)) {
-            return [
-                'valid' => false,
-                'reply' => '⚠️ تم رصد نمط إدخال غير آمن. يرجى صياغة سؤالك في سياق مقرر نظم قواعد البيانات فقط.',
-                'error_code' => 'SECURITY_VIOLATION'
             ];
         }
 
@@ -72,13 +73,13 @@ class QueryValidator
             ];
         }
 
-        // 6. Robust Server-Side IP-Based Rate Limiting for valid questions
+        // 6. Sliding Window Log Rate Limiter (Enforces Fail-Closed security for valid questions)
         $rateLimitCheck = self::checkRateLimit();
         if (!$rateLimitCheck['allowed']) {
             return [
                 'valid' => false,
-                'reply' => '⚠️ لقد تجاوزت الحد المسموح به من الأسئلة المتتالية (' . self::RATE_LIMIT_MAX_REQUESTS . ' استفسارات في الدقيقة). يرجى الانتظار قليلاً لتنظيم حركة المرور الأكاديمية.',
-                'error_code' => 'RATE_LIMIT_EXCEEDED'
+                'reply' => $rateLimitCheck['reply'] ?? ('⚠️ لقد تجاوزت الحد المسموح به من الأسئلة المتتالية (' . self::RATE_LIMIT_MAX_REQUESTS . ' استفسارات في الدقيقة). يرجى الانتظار قليلاً لتنظيم حركة المرور الأكاديمية.'),
+                'error_code' => $rateLimitCheck['error_code'] ?? 'RATE_LIMIT_EXCEEDED'
             ];
         }
 
@@ -86,27 +87,79 @@ class QueryValidator
     }
 
     /**
-     * Checks if the message is requesting executable code or script writing
+     * Checks if the message is requesting executable code, debugging, or script generation.
+     * Accurately distinguishes theoretical inquiries from code creation/debugging actions.
      */
-    private static function isCodeRequest(string $message): bool
+    public static function isCodeRequest(string $message): bool
     {
-        $patterns = [
-            // Explicit code generation verbs in Arabic
-            '/(اكتب|انشئ|أنشئ|اعمل|سو|سوي|برمج|كود|اكواد|أكواد|سكريبت)\s*(لي|لنا)?\s*(كود|برنامج|سكريبت|استعلام|دالة|تابع|class|function|script)/iu',
-            '/(حل|اكتب|اعطني|أعطني|انشئ|أنشئ|اعمل|سو|سوي|برمج).*?(كود|البرنامج|استعلام|دالة|تابع|سكريبت|script)/iu',
-            '/(write|generate|give\s*me|create|build)\s*(a\s*)?(code|script|sql\s*query|program|function|class)/i',
-            // Specific programming languages (with boundaries supporting c++, c#, etc.)
-            '/(?:\b|\s|^)(python|java|javascript|php|c\+\+|cpp|c\#|golang|rust|ruby|html|css)(?:\b|\s|:|[^\w]|$)/iu',
-            // Code keywords & syntaxes
-            '/\b(SELECT\s+.+\s+FROM|INSERT\s+INTO|UPDATE\s+.+\s+SET|DELETE\s+FROM|CREATE\s+TABLE|DROP\s+TABLE|ALTER\s+TABLE)\b/i',
-            '/<\?php/i',
-            '/\bdef\s+[a-z_][a-z0-9_]*\s*\(/i',
-            '/\bfunction\s+[a-z_][a-z0-9_]*\s*\(/i',
-            '/\bpublic\s+(static\s+)?void\s+main\b/i'
+        $trimmed = trim($message);
+
+        // A. Whitelist Explicit Conceptual Questions:
+        // Questions asking for definitions, theoretical differences, or taxonomy must NOT be blocked by Zero-Code.
+        $conceptualPatterns = [
+            '/^\s*(ما\s*الفرق\s*بين|قارن\s*بين|ما\s*المقصود\s*بـ?|ما\s*مفهوم|ما\s*معنى|اشرح\s*مفهوم|اشرح\s*نظريا|عرف|عرّف|ما\s*هو\s*مفهوم|ما\s*وظيفة)\s+.+/iu',
+            '/^\s*(what\s+is\s+the\s+difference\s+between|compare|what\s+is\s+meant\s+by|explain\s+the\s+concept\s+of|define|explain\s+theoretically)\s+.+/i'
         ];
 
-        foreach ($patterns as $pattern) {
-            if (preg_match($pattern, $message)) {
+        $isExplicitConceptual = false;
+        foreach ($conceptualPatterns as $cp) {
+            if (preg_match($cp, $trimmed)) {
+                $isExplicitConceptual = true;
+                break;
+            }
+        }
+
+        // Even if phrased conceptually, if it contains an actual raw SQL query or executable code snippet, it must be caught!
+        $rawExecutableCodePatterns = [
+            '/\b(SELECT\s+.+\s+FROM|INSERT\s+INTO\s+.+|UPDATE\s+.+\s+SET|DELETE\s+FROM\s+.+|CREATE\s+TABLE\s+.+|DROP\s+TABLE\s+.+|ALTER\s+TABLE\s+.+)\b/i',
+            '/<\?php/i',
+            '/\bdef\s+[a-zA-Z_][a-zA-Z0-9_]*\s*\(/i',
+            '/\bfunction\s+[a-zA-Z_][a-zA-Z0-9_]*\s*\(/i',
+            '/\bpublic\s+(static\s+)?void\s+main\b/i',
+            '/#include\s*<[a-zA-Z0-9_\.]+>/i',
+            '/import\s+java\.[a-zA-Z0-9_\.]+/i'
+        ];
+
+        foreach ($rawExecutableCodePatterns as $rep) {
+            if (preg_match($rep, $trimmed)) {
+                return true;
+            }
+        }
+
+        if ($isExplicitConceptual) {
+            return false;
+        }
+
+        // B. Intent-Based Detection for Code Generation, Completion, and Debugging
+        $codeIntentPatterns = [
+            // 1. Generation verbs in Arabic (write, create, build, generate, provide, give me) + (code, program, query, script, function, class)
+            '/(اكتب|انشئ|أنشئ|اعمل|سو|سوي|برمج|ولد|ولّد|صمم|اعطني|أعطني|هات|اريد|أريد|ابي|أبي)\s*.*?(كود|شفرة|برنامج|سكريبت|استعلام|دالة|تابع|class|function|script|query|code)/iu',
+
+            // 2. Fixing, debugging, completing, or modifying code in Arabic
+            '/(صحح|عدل|عدّل|صلح|صلّح|أكمل|اكمل|أصلح|اصلح|فحص|افحص|تنقيح|ديوج|دي\s*باج)\s*.*?(كود|الكود|برنامج|البرنامج|سكريبت|استعلام|الخطأ|code|script|query)/iu',
+
+            // 3. Solving / Implementing using a programming language (Arabic)
+            '/(حل|برمج|طبق|طبّق|اكتب|نفذ|نفّذ)\s*.*?(باستخدام|بـ|بلغة|بواسطة|عبر)?\s*(c\+\+|cpp|c\#|csharp|python|java|javascript|php|sql|golang|rust|ruby)(?:\b|\s|:|[^\w]|$)/iu',
+
+            // 4. Generation verbs in English
+            '/\b(write|create|generate|give\s*me|build|provide|produce|code|script)\s*.*?\b(code|script|sql\s*query|program|function|class|query)\b/i',
+
+            // 5. Fixing, debugging, completing in English
+            '/\b(fix|debug|correct|complete|solve|optimize|refactor)\s*.*?\b(code|script|query|program|function|bug|error)\b/i',
+
+            // 6. Implementing an algorithm into code in English
+            '/\b(implement|code|program)\s+.*?(\b(algorithm|query|in|using|with)\b)/i',
+
+            // 7. Explicit "Write a [Language] script/code"
+            '/\bwrite\s+a\s+(php|python|java|javascript|c\+\+|cpp|c\#|sql)\s+(script|code|program|query)\b/i',
+            '/\bcreate\s+(javascript|python|java|php|c\+\+|c\#|sql)\s+(code|script|program)\b/i',
+
+            // 8. Explicit "حل هذا السؤال بكود" or "حل السؤال بكود"
+            '/حل\s+.*?\s*بكود/iu'
+        ];
+
+        foreach ($codeIntentPatterns as $cip) {
+            if (preg_match($cip, $trimmed)) {
                 return true;
             }
         }
@@ -115,17 +168,19 @@ class QueryValidator
     }
 
     /**
-     * Detects prompt injection patterns
+     * Detects prompt injection patterns and unauthorized system overrides
      */
-    private static function isPromptInjection(string $message): bool
+    public static function isPromptInjection(string $message): bool
     {
         $patterns = [
             '/ignore\s+(all\s+)?(previous|prior)\s+instructions/i',
             '/you\s+are\s+now\s+(unrestricted|DAN|jailbreak)/i',
-            '/تجاهل\s+(جميع|كل)?\s*(التعليمات|الأوامر|القواعد)/iu',
+            '/تجاهل\s+(جميع|كل)?\s*(التعليمات|الأوامر|القواعد|السياسات)/iu',
+            '/ألغِ\s*(سياسة|قواعد)?\s*منع\s*الأكواد/iu',
             '/reveal\s+(your\s+)?(system\s*prompt|(?:gemini_)?api\s*key)/i',
             '/show\s+(me\s+)?(your\s+)?(system\s*prompt|(?:gemini_)?api\s*key)/i',
-            '/(gemini_api_key|api_key|مفتاح\s*api|system\s*prompt|البرومبت\s*الأساسي)/iu'
+            '/(gemini_api_key|api_key|مفتاح\s*api|system\s*prompt|البرومبت\s*الأساسي|البرومبت\s*النظامي)/iu',
+            '/(ما\s*هو|اعطني|أعطني|اكشف|أظهر)\s*.*?(مفتاح\s*(?:api|المنصة|الذكاء|الخادم|السري)|api\s*key|system\s*prompt)/iu'
         ];
 
         foreach ($patterns as $pattern) {
@@ -141,7 +196,7 @@ class QueryValidator
      * Scope Enforcer: Validates that the query contains relevant DBMS terminology
      * or retrieves at least one relevant chunk with meaningful score from the academic summary
      */
-    private static function isDbmsScope(string $message): bool
+    public static function isDbmsScope(string $message): bool
     {
         // 1. Off-Topic Blacklist Check (instant rejection)
         $offTopicPatterns = [
@@ -158,8 +213,7 @@ class QueryValidator
             }
         }
 
-        $dbmsKeywords = [
-            // Core concepts Arabic
+        $arabicKeywords = [
             'قاعدة', 'قواعد', 'بيانات', 'داتابيز', 'مقرر', 'نظم', 'ملف', 'ملفات',
             'جدول', 'جداول', 'سجل', 'سجلات', 'حقل', 'حقول', 'صفة', 'صفات',
             'مفتاح', 'مفاتيح', 'أساسي', 'أجنبي', 'مرشح', 'فائق', 'بديل', 'مركب',
@@ -168,9 +222,10 @@ class QueryValidator
             'داخلي', 'مفاهيمي', 'خارجي', 'استقلالية', 'جبر', 'علائقي', 'اختيار',
             'إسقاط', 'ربط', 'جداء', 'ديكارتي', 'اتحاد', 'تقاطع', 'فرق', 'تكامل',
             'مرجعي', 'كياني', 'امتحان', 'نصفي', 'درجة', 'محاضرة', 'فصل',
-            'تكرار', 'تجزئة', 'فقدان', 'ansi', 'sparc', 'er', 'eer',
+            'تكرار', 'تجزئة', 'فقدان'
+        ];
 
-            // Core concepts English
+        $englishKeywords = [
             'dbms', 'database', 'rdbms', 'table', 'relation', 'tuple', 'attribute',
             'degree', 'cardinality', 'schema', 'instance', 'ansi', 'sparc',
             'internal', 'conceptual', 'external', 'data independence', 'physical', 'logical',
@@ -183,14 +238,21 @@ class QueryValidator
             'natural join', 'theta join', 'equijoin', 'union', 'intersection',
             'difference', 'union-compatible', 'normalization', 'functional dependency',
             '1nf', '2nf', '3nf', 'bcnf', 'partial dependency', 'transitive dependency',
-            'closure', 'armstrong'
+            'closure', 'armstrong', 'ddl', 'dml', 'sql', 'nosql', 'er'
         ];
 
         $lowerMsg = mb_strtolower($message);
 
-        // Check if any keyword matches
-        foreach ($dbmsKeywords as $kw) {
+        // Check Arabic keywords by substring
+        foreach ($arabicKeywords as $kw) {
             if (mb_strpos($lowerMsg, $kw) !== false) {
+                return true;
+            }
+        }
+
+        // Check English keywords using strict word boundaries to avoid false substring matches (e.g. "er" in "compiler")
+        foreach ($englishKeywords as $kw) {
+            if (preg_match('/(?:\b|^)' . preg_quote($kw, '/') . '(?:\b|$)/i', $message)) {
                 return true;
             }
         }
@@ -205,23 +267,28 @@ class QueryValidator
     }
 
     /**
-     * Safely resolve client IP for rate limiting
+     * Safely resolve client IP for rate limiting.
+     * Prevents IP spoofing while properly supporting Render reverse proxy.
      */
     public static function getClientIp(): string
     {
-        if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        // 1. In Render environment (Render automatically sets RENDER=true), trust X-Forwarded-For
+        $isRender = getenv('RENDER') !== false || !empty($_ENV['RENDER']) || !empty($_SERVER['RENDER']);
+
+        if ($isRender && !empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
             $ips = explode(',', $_SERVER['HTTP_X_FORWARDED_FOR']);
-            $ip = trim($ips[0]);
-            if (filter_var($ip, FILTER_VALIDATE_IP)) {
-                return $ip;
+            $clientIp = trim($ips[0]);
+            if (filter_var($clientIp, FILTER_VALIDATE_IP)) {
+                return $clientIp;
             }
         }
-        if (!empty($_SERVER['HTTP_CLIENT_IP']) && filter_var($_SERVER['HTTP_CLIENT_IP'], FILTER_VALIDATE_IP)) {
-            return $_SERVER['HTTP_CLIENT_IP'];
-        }
+
+        // 2. Direct web server or local XAMPP: Prioritize REMOTE_ADDR to prevent header spoofing
         if (!empty($_SERVER['REMOTE_ADDR']) && filter_var($_SERVER['REMOTE_ADDR'], FILTER_VALIDATE_IP)) {
             return $_SERVER['REMOTE_ADDR'];
         }
+
+        // 3. Fallback for CLI or untrusted contexts
         return '127.0.0.1';
     }
 
@@ -243,9 +310,11 @@ class QueryValidator
     }
 
     /**
-     * File-backed + Session IP Rate Limiting (survives deleted cookies)
+     * Sliding Window Log Server-Side Rate Limiter
+     * Enforces strict FAIL-CLOSED policy: If storage, locking, or decoding fails,
+     * the request is safely rejected with an error notice.
      */
-    private static function checkRateLimit(): array
+    public static function checkRateLimit(): array
     {
         $now = time();
         $ip = self::getClientIp();
@@ -253,69 +322,95 @@ class QueryValidator
         $tempDir = sys_get_temp_dir();
         $rateFile = $tempDir . DIRECTORY_SEPARATOR . 'dbms_rl_' . substr($ipHash, 0, 16) . '.json';
 
-        $allowed = true;
+        // 1. Fail-Closed if fopen fails (unwritable directory, permission denied, etc.)
         $fp = @fopen($rateFile, 'c+');
+        if ($fp === false) {
+            error_log("[DBMS RateLimit Fail-Closed] Failed to open rate file: {$rateFile}");
+            return [
+                'allowed' => false,
+                'error_code' => 'RATE_LIMIT_STORAGE_UNAVAILABLE',
+                'reply' => '⚠️ تعذر الوصول إلى مسجل معدل الطلبات في الخادم. تم حظر الطلب كإجراء أمان احترازي.'
+            ];
+        }
 
-        if ($fp !== false) {
-            if (flock($fp, LOCK_EX)) {
-                $content = stream_get_contents($fp);
-                $history = [];
-                if ($content !== false && $content !== '') {
-                    $decoded = json_decode($content, true);
-                    if (is_array($decoded)) {
-                        $history = $decoded;
-                    }
-                }
-
-                // Prune timestamps older than window
-                $history = array_values(array_filter($history, fn($ts) => is_int($ts) && ($now - $ts) < self::RATE_LIMIT_WINDOW_SECONDS));
-
-                if (count($history) >= self::RATE_LIMIT_MAX_REQUESTS) {
-                    $allowed = false;
-                } else {
-                    $history[] = $now;
-                    ftruncate($fp, 0);
-                    rewind($fp);
-                    fwrite($fp, json_encode($history));
-                    fflush($fp);
-                }
-
-                flock($fp, LOCK_UN);
-            }
+        // 3. Fail-Closed if flock fails
+        if (!flock($fp, LOCK_EX)) {
             fclose($fp);
-        } else {
-            // Fallback to session rate limiting if temp directory is not writable
-            return self::checkSessionRateLimit($now);
+            error_log("[DBMS RateLimit Fail-Closed] Lock acquisition failed for IP hash: " . substr($ipHash, 0, 16));
+            return [
+                'allowed' => false,
+                'error_code' => 'RATE_LIMIT_LOCK_FAILED',
+                'reply' => '⚠️ الخادم مشغول حالياً بتنظيم حركة الطلبات المتزامنة. يرجى الانتظار بضع ثوانٍ.'
+            ];
         }
 
-        // Also update session history if available
-        self::checkSessionRateLimit($now);
-
-        return ['allowed' => $allowed];
-    }
-
-    /**
-     * Session-based Rate Limiter Fallback
-     */
-    private static function checkSessionRateLimit(int $now): array
-    {
-        if (session_status() === PHP_SESSION_NONE) {
-            @session_start();
+        $content = stream_get_contents($fp);
+        $history = [];
+        if ($content !== false && $content !== '') {
+            $decoded = json_decode($content, true);
+            // 4. Fail-Closed if data is corrupted
+            if (!is_array($decoded)) {
+                flock($fp, LOCK_UN);
+                fclose($fp);
+                error_log("[DBMS RateLimit Fail-Closed] Corrupted data in rate file: {$rateFile}");
+                return [
+                    'allowed' => false,
+                    'error_code' => 'RATE_LIMIT_CORRUPTED',
+                    'reply' => '⚠️ تم رصد خطأ في بنية سجل الطلبات الآمن. تم حظر الطلب كإجراء احترازي.'
+                ];
+            }
+            $history = $decoded;
         }
 
-        $history = $_SESSION['dbms_rate_limit_history'] ?? [];
-        if (!is_array($history)) {
-            $history = [];
-        }
-
+        // Sliding Window Log: Prune entries older than 60 seconds
         $history = array_values(array_filter($history, fn($ts) => is_int($ts) && ($now - $ts) < self::RATE_LIMIT_WINDOW_SECONDS));
 
+        // Enforce quota
         if (count($history) >= self::RATE_LIMIT_MAX_REQUESTS) {
-            return ['allowed' => false];
+            flock($fp, LOCK_UN);
+            fclose($fp);
+            return [
+                'allowed' => false,
+                'error_code' => 'RATE_LIMIT_EXCEEDED',
+                'reply' => '⚠️ لقد تجاوزت الحد المسموح به من الأسئلة المتتالية (' . self::RATE_LIMIT_MAX_REQUESTS . ' استفسارات في الدقيقة). يرجى الانتظار قليلاً لتنظيم حركة المرور الأكاديمية.'
+            ];
         }
 
+        // Append current request timestamp
         $history[] = $now;
-        $_SESSION['dbms_rate_limit_history'] = $history;
+        $encoded = json_encode($history);
+        if ($encoded === false) {
+            flock($fp, LOCK_UN);
+            fclose($fp);
+            return [
+                'allowed' => false,
+                'error_code' => 'RATE_LIMIT_WRITE_FAILED',
+                'reply' => '⚠️ فشل تشفير سجل الطلبات. يرجى إعادة المحاولة.'
+            ];
+        }
+
+        ftruncate($fp, 0);
+        rewind($fp);
+        $written = fwrite($fp, $encoded);
+        fflush($fp);
+        flock($fp, LOCK_UN);
+        fclose($fp);
+
+        // 5. Fail-Closed if fwrite fails
+        if ($written === false || $written < strlen($encoded)) {
+            error_log("[DBMS RateLimit Fail-Closed] Write failure on rate file: {$rateFile}");
+            return [
+                'allowed' => false,
+                'error_code' => 'RATE_LIMIT_WRITE_FAILED',
+                'reply' => '⚠️ فشل حفظ تحديث سجل الطلبات في الخادم. يرجى إعادة المحاولة.'
+            ];
+        }
+
+        // Keep session synchronized when active
+        if (session_status() === PHP_SESSION_ACTIVE || session_status() === PHP_SESSION_NONE) {
+            @session_start();
+            $_SESSION['dbms_rate_limit_history'] = $history;
+        }
 
         return ['allowed' => true];
     }

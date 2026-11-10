@@ -31,9 +31,9 @@ class GeminiClient
         $candidateModels = array_values(array_unique([
             $primaryModel,
             'gemini-3-flash-preview',
+            'gemini-2.5-flash',
             'gemini-2.0-flash',
-            'gemini-1.5-flash',
-            'gemini-1.5-flash-latest'
+            'gemini-1.5-flash'
         ]));
 
         // Build System Instruction & Context
@@ -112,20 +112,37 @@ class GeminiClient
 
             $lastHttpCode = $httpCode;
             $lastError = $result['error']['message'] ?? 'Unknown Gemini API error';
-            error_log("Gemini model {$model} returned HTTP {$httpCode}: {$lastError}. Attempting fallback...");
+            $safeError = str_replace($apiKey, '***KEY***', (string)$lastError);
+
+            // Fail-Fast: If authentication/permission fails (400, 401, 403), stop immediately without useless fallback loops
+            if ($httpCode === 400 || $httpCode === 401 || $httpCode === 403) {
+                error_log("Gemini API authentication failed (HTTP {$httpCode}): {$safeError}");
+                return [
+                    'success' => false,
+                    'reply' => "⚠️ تعذر التحقق من اعتماد مفتاح الذكاء الاصطناعي (Authentication Error). يرجى مراجعة إعدادات المفتاح في بيئة الخادم.",
+                    'error_code' => 'AUTH_ERROR',
+                    'http_status' => $httpCode
+                ];
+            }
+
+            // Fail-Fast: If project quota is exceeded (429), stop immediately
+            if ($httpCode === 429) {
+                error_log("Gemini API quota exceeded (HTTP 429): {$safeError}");
+                return [
+                    'success' => false,
+                    'reply' => "تم تجاوز حد الطلبات اللحظي في خدمة الذكاء الاصطناعي (Quota Exceeded). يرجى الانتظار 30 ثانية والمحاولة ثانية.",
+                    'error_code' => 'RATE_LIMIT',
+                    'http_status' => 429
+                ];
+            }
+
+            // Fallback candidate for model not found (404) or transient server errors (500, 503)
+            error_log("Gemini model {$model} returned HTTP {$httpCode}: {$safeError}. Attempting fallback...");
         }
 
         // Mask any key if present in error message
         $safeError = str_replace($apiKey, '***KEY***', (string)$lastError);
         error_log("All candidate Gemini models failed. Last HTTP: {$lastHttpCode}, Safe Error: {$safeError}");
-
-        if ($lastHttpCode === 429) {
-            return [
-                'success' => false,
-                'reply' => "تم تجاوز حد الطلبات اللحظي في خدمة الذكاء الاصطناعي (Rate Limit). يرجى الانتظار 30 ثانية والمحاولة ثانية.",
-                'error_code' => 'RATE_LIMIT'
-            ];
-        }
 
         return [
             'success' => false,

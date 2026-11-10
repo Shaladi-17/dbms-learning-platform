@@ -2,8 +2,5 @@
 User-agent: *
 Allow: /
 Disallow: /api/
-Disallow: /.env
-Disallow: /Dockerfile
 
 Sitemap: https://dbms-learning-platform.onrender.com/sitemap.xml
-
